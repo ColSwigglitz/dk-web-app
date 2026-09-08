@@ -38,6 +38,10 @@ Example: Josh Allen's 2025 week 1 raw stats (394 passing yards, 2 passing TD, 30
 
 ## Current limitations
 
+- Week 1 salaries come from DraftKings NFL Classic draft group `151307`, captured 8 September 2026. The group contains only the 12 Sunday early and afternoon games.
+- DraftKings does not publish a supported public salary API. `scripts/build-draftkings-slate.mjs` converts the current draftables response into the checked-in browser data file; if that endpoint changes, download the Sunday Classic `DKSalaries.csv` from DraftKings and use the app's CSV-compatible fields.
+- DraftKings rows are matched to Sleeper by normalized player name, team and position. The current snapshot matches 723 of 744 entries after accounting for multi-position players and DraftKings' Hollywood Brown alias. Most unmatched entries are long snappers, fullbacks, or reserve players that Sleeper does not expose as fantasy players. A DraftKings player without a Sleeper ID cannot receive automated live points and is therefore omitted from the selectable pool.
+
 - **Sunday scope and deadline:** the player pool contains only teams scheduled on Sunday, only their points count, and reveal depends only on Sunday fixtures. Sleeper supplies game dates, not kickoff timestamps, so the roster locks at **00:00 UTC on Sunday**. The UI displays this deadline; a database trigger also blocks writes/deletes. Per-player kickoff locking requires another verified time feed. A missing verified schedule blocks edits.
 - Regular season only (weeks 1–18); no postseason competition support or historical week selector yet.
 - Existing Sleeper IDs map directly, including team abbreviations for DST. Existing non-Sunday selections remain visible to their owner, are labelled ignored, prevent the roster being described as Sunday-complete, and score zero; they are not deleted automatically. Legacy `dk26-*` IDs are flagged as needing mapping and score zero; no ambiguous name matching is performed. A valid Sunday player with no stat row scores zero, which can represent pregame, DNP, or feed omission. The provider does not supply enough information here to distinguish those reliably.
@@ -52,4 +56,3 @@ Backend schema: `supabase/stats-schema.sql`; Sunday migration: `supabase/sunday-
 Run `node --test tests/*.test.mjs` with Node 24. `tests/privacy.sql` runs in a transaction and rolls back every synthetic user/league/lineup. It verifies private direct reads, aggregate scoring independent of client projections, outsider denial, denied snapshot mutation, final reveal, and locked deletion.
 
 Security advisor reports no new integration findings. Existing notices remain for the intentionally privileged join-by-code function and disabled leaked-password protection. See [function advisor](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) and [password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
-

@@ -10,7 +10,8 @@ const state={
   players:[],lineup:Object.fromEntries(SLOT_ORDER.map(s=>[s,null])),activePosition:'ALL',search:'',submitted:false,liveStats:{},
   statsSnapshot:null,nflState:null,user:null,profile:null,league:null,members:[],leagueLineups:[]
 };
-const FALLBACK_PLAYERS=(window.WEEK1_2026_PLAYERS||[]).map(p=>({...p,source:'fallback'}));
+const DK_SLATE=window.DK_NFL_SLATE||null;
+const FALLBACK_PLAYERS=(DK_SLATE?.players||window.WEEK1_2026_PLAYERS||[]).map(p=>({...p,id:String(p.id||`dk-${p.dkId}`),source:'DraftKings fallback'}));
 
 function money(n){return '$'+Number(n||0).toLocaleString('en-US')}
 function lineupPlayers(){return SLOT_ORDER.map(s=>state.lineup[s]).filter(Boolean)}
@@ -43,7 +44,29 @@ function generatedSalary(position,rank,total){const ranges={QB:[4000,8000],RB:[4
 function generatedProjection(position,salary){const base={QB:8,RB:5,WR:4,TE:3,DST:4}[position]||3;const factor={QB:.0022,RB:.00215,WR:.0021,TE:.002,DST:.0014}[position]||.002;return Math.round((base+(salary-2500)*factor)*10)/10}
 function sleeperName(p,position){if(position==='DST')return p.full_name||p.team||p.player_id;return p.full_name||[p.first_name,p.last_name].filter(Boolean).join(' ')||p.player_id}
 function sleeperRank(p){const r=Number(p.search_rank);return Number.isFinite(r)&&r>0?r:99999}
+function normalizedPlayerName(value){const name=String(value||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').replace(/\b(jr|sr|ii|iii|iv|v)\b/g,' ').replace(/\s+/g,' ').trim();return({'hollywood brown':'marquise brown'}[name]||name)}
+function normalizedTeam(value){return({JAC:'JAX',WSH:'WAS'}[String(value||'').toUpperCase()]||String(value||'').toUpperCase())}
+function dkPlayerKey(name,team,position){return`${normalizedPlayerName(name)}|${normalizedTeam(team)}|${position}`}
 function buildSleeperPool(raw){
+  if(DK_SLATE?.players?.length){
+    const exact=new Map(),byNamePosition=new Map();
+    for(const player of DK_SLATE.players){
+      exact.set(dkPlayerKey(player.name,player.team,player.position),player);
+      byNamePosition.set(`${normalizedPlayerName(player.name)}|${player.position}`,player);
+    }
+    const out=[],used=new Set();
+    for(const sleeper of Object.values(raw||{})){
+      const positions=[sleeper.position,...(sleeper.fantasy_positions||[])].map(value=>String(value||'').toUpperCase()).map(value=>value==='DEF'?'DST':value).filter((value,index,list)=>['QB','RB','WR','TE','DST'].includes(value)&&list.indexOf(value)===index);
+      if(!positions.length||!sleeper.team)continue;
+      const team=normalizedTeam(sleeper.team),name=sleeper.full_name||[sleeper.first_name,sleeper.last_name].filter(Boolean).join(' ')||sleeper.player_id;
+      let position='',dk=null;
+      for(const candidate of positions){dk=candidate==='DST'?DK_SLATE.players.find(p=>p.position==='DST'&&normalizedTeam(p.team)===team):exact.get(dkPlayerKey(name,team,candidate))||byNamePosition.get(`${normalizedPlayerName(name)}|${candidate}`);if(dk){position=candidate;break}}
+      if(!dk||used.has(dk.dkId))continue;
+      used.add(dk.dkId);
+      out.push({id:String(sleeper.player_id),dkId:dk.dkId,espnId:sleeper.espn_id?String(sleeper.espn_id):'',name:dk.name,position,team:normalizedTeam(dk.team),opp:'',salary:dk.salary,avg:dk.avg,game:dk.game,source:`DraftKings · Week ${DK_SLATE.week}`,rank:sleeperRank(sleeper),status:dk.status||sleeper.injury_status||''});
+    }
+    return out;
+  }
   const groups={QB:[],RB:[],WR:[],TE:[],DST:[]};
   Object.values(raw||{}).forEach(p=>{let pos=String(p.position||'').toUpperCase();if(pos==='DEF')pos='DST';if(!groups[pos]||!p.team)return;if(pos!=='DST'&&p.active===false)return;groups[pos].push(p)});
   const limits={QB:40,RB:90,WR:120,TE:60,DST:32},out=[];
@@ -52,7 +75,7 @@ function buildSleeperPool(raw){
 }
 async function syncSleeper(force=false){
   const status=document.getElementById('sleeperStatus');if(status)status.textContent='Refreshing free NFL player data from Sleeper…';
-  try{const [playersRes,stateRes]=await Promise.all([fetch(SLEEPER_PLAYERS,{cache:force?'reload':'default'}),fetch(SLEEPER_STATE,{cache:'no-store'})]);if(!playersRes.ok)throw new Error(`Sleeper player request failed (${playersRes.status})`);const raw=await playersRes.json();const nflState=stateRes.ok?await stateRes.json():null;const pool=buildSleeperPool(raw);if(pool.length<100)throw new Error('Sleeper returned an unexpectedly small player pool.');state.players=pool;state.nflState=nflState;renderAll();updateWeekLabels();if(status)status.innerHTML=`<span class="success">Loaded ${pool.length} NFL players from Sleeper.</span>`}
+  try{const [playersRes,stateRes]=await Promise.all([fetch(SLEEPER_PLAYERS,{cache:force?'reload':'default'}),fetch(SLEEPER_STATE,{cache:'no-store'})]);if(!playersRes.ok)throw new Error(`Sleeper player request failed (${playersRes.status})`);const raw=await playersRes.json();const nflState=stateRes.ok?await stateRes.json():null;const pool=buildSleeperPool(raw);if(pool.length<100)throw new Error('The current DraftKings slate could not be matched to enough Sleeper players.');state.players=pool;state.nflState=nflState;renderAll();updateWeekLabels();if(status)status.innerHTML=`<span class="success">Loaded ${pool.length} Sunday players with official DraftKings values.</span>`}
   catch(err){state.players=FALLBACK_PLAYERS;renderAll();if(status)status.innerHTML=`<span class="danger">Sleeper refresh failed: ${escapeHtml(err.message)}. Using fallback data.</span>`}
 }
 function updateWeekLabels(){const {season,week}=seasonWeek();document.querySelectorAll('[data-week-label]').forEach(e=>e.textContent=`WEEK ${week}`);setText('heroWeek',`WEEK ${week} · ${season}`)}
@@ -113,7 +136,9 @@ async function loadMembers(){
 async function loadCurrentLineup(){
   if(!state.league||!state.user)return;const {season,week}=seasonWeek();const {data,error}=await sb.from('weekly_lineups').select('lineup,submitted').eq('league_id',state.league.id).eq('user_id',state.user.id).eq('season',season).eq('week',week).maybeSingle();
   if(error){showStatus('dbStatus',error.message,'danger');return}
-  state.lineup=Object.fromEntries(SLOT_ORDER.map(s=>[s,null]));if(data?.lineup&&typeof data.lineup==='object')state.lineup={...state.lineup,...data.lineup};state.submitted=!!data?.submitted;
+  state.lineup=Object.fromEntries(SLOT_ORDER.map(s=>[s,null]));if(data?.lineup&&typeof data.lineup==='object')state.lineup={...state.lineup,...data.lineup};
+  for(const slot of SLOT_ORDER){const saved=state.lineup[slot];if(!saved)continue;const current=state.players.find(p=>String(p.id)===String(saved.id))||state.players.find(p=>dkPlayerKey(p.name,p.team,p.position)===dkPlayerKey(saved.name,saved.team,saved.position));if(current)state.lineup[slot]=current}
+  state.submitted=!!data?.submitted;
 }
 async function saveLineup(){
   if(!state.user||!state.league)return;const {season,week}=seasonWeek();const payload={league_id:state.league.id,user_id:state.user.id,season,week,lineup:state.lineup,salary_used:salaryUsed(),projected:projected(),submitted:state.submitted,submitted_at:state.submitted?new Date().toISOString():null,updated_at:new Date().toISOString()};
@@ -148,4 +173,3 @@ function bind(){
 }
 async function init(){bind();state.players=FALLBACK_PLAYERS;renderAll();await syncSleeper(false);const {data:{user}}=await sb.auth.getUser();if(user)await onSignedIn(user);sb.auth.onAuthStateChange(async(event,session)=>{if(event==='SIGNED_IN'&&session?.user&&state.user?.id!==session.user.id)await onSignedIn(session.user);if(event==='SIGNED_OUT')await signOut()})}
 window.addEventListener('DOMContentLoaded',init);
-
