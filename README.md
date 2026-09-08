@@ -1,4 +1,14 @@
-# Weekly NFL Draft MVP
+# Weekly NFL Draft
+
+## Live stats integration
+
+The app now uses Supabase accounts and shared weekly rosters, with actual server-calculated Sleeper stats on the leaderboard. Other rosters remain private until the entire NFL week is verified complete. Scores refresh every minute while the page is visible; failures retain the last successful scores and display a delayed-data notice.
+
+The initial deadline is 00:00 UTC on the week's first game date because the verified schedule lacks kickoff times. Read [STATS-INTEGRATION.md](STATS-INTEGRATION.md) for scoring rules, verified endpoints, deployment, tests and limitations.
+
+Run tests with Node 24: `node --test tests/*.test.mjs`. Database tests in `tests/privacy.sql` roll back every fixture.
+
+## Original prototype notes (superseded)
 
 A private, points-only weekly NFL drafting game inspired by DFS interfaces.
 
@@ -40,3 +50,4 @@ The DraftKings CSV importer supports common columns such as:
 - Game Info
 - TeamAbbrev
 - AvgPointsPerGame
+

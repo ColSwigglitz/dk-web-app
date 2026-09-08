@@ -8,6 +8,7 @@ window.signOut = async function signOutUiOnly(){
   state.lineup=Object.fromEntries(SLOT_ORDER.map(s=>[s,null]));
   state.submitted=false;
   state.liveStats={};
+  state.statsSnapshot=null;
   document.getElementById('authScreen')?.classList.remove('hidden');
   document.getElementById('appShell')?.classList.add('auth-locked');
   renderAll();
@@ -45,3 +46,4 @@ document.getElementById('createLeagueBtn')?.addEventListener('click',async(event
 sb.auth.onAuthStateChange((event,session)=>{
   if(event==='SIGNED_IN'&&session?.user)setTimeout(applyLeagueAdminUi,0);
 });
+
