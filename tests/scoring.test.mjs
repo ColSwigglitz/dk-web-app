@@ -20,9 +20,14 @@ test('input validation and empty pregame stats',()=>{
   assert.throws(()=>normalizeStats({'1':{pass_yd:'300'}}));
 });
 test('verified historical final week reveals; current week stays private',()=>{
-  assert.equal(inspectSchedule(prior,1).complete,true);
-  assert.equal(inspectSchedule(current,1).verified,true);
-  assert.equal(inspectSchedule(current,1).complete,false);
+  const historical=inspectSchedule(prior,1),upcoming=inspectSchedule(current,1);
+  assert.equal(historical.complete,true);
+  assert.equal(historical.games.length,13);
+  assert.equal(historical.games.every(g=>new Date(g.date+'T12:00:00Z').getUTCDay()===0),true);
+  assert.equal(upcoming.verified,true);
+  assert.equal(upcoming.complete,false);
+  assert.equal(upcoming.games.length,13);
+  assert.equal(upcoming.lockAt,'2026-09-13T00:00:00Z');
 });
 test('last game, postponed game, unknown state, missing games and truncated feed fail closed',()=>{
   for(const status of ['in_progress','postponed','unknown','pre_game']){
@@ -31,10 +36,15 @@ test('last game, postponed game, unknown state, missing games and truncated feed
   }
   assert.equal(inspectSchedule([],1).complete,false);
   assert.equal(inspectSchedule(prior.slice(1),1).complete,false);
-  assert.equal(inspectSchedule(prior,1,[{game_id:'missing'}]).complete,false);
+  assert.equal(inspectSchedule(prior,1,[{game_id:'missing',date:'2025-09-07'}]).complete,false);
 });
 test('cancelled placeholder does not prevent a valid complete 272-game schedule',()=>{
   const s=structuredClone(current);s.forEach(g=>{if(g.status!=='canceled')g.status='complete'});
   assert.equal(inspectSchedule(s,6).complete,true);
+});
+test('Thursday, Friday, Saturday and Monday games do not affect reveal',()=>{
+  const s=structuredClone(prior);
+  s.filter(g=>g.week===1&&new Date(g.date+'T12:00:00Z').getUTCDay()!==0).forEach(g=>g.status='pre_game');
+  assert.equal(inspectSchedule(s,1).complete,true);
 });
 

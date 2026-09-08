@@ -2,9 +2,9 @@
 
 ## Live stats integration
 
-The app now uses Supabase accounts and shared weekly rosters, with actual server-calculated Sleeper stats on the leaderboard. Other rosters remain private until the entire NFL week is verified complete. Scores refresh every minute while the page is visible; failures retain the last successful scores and display a delayed-data notice.
+The app now uses Supabase accounts and shared weekly rosters, with actual server-calculated Sleeper stats on the leaderboard. Only Sunday games count. Other rosters remain private until every Sunday game is verified complete. Scores refresh every minute while the page is visible; failures retain the last successful scores and display a delayed-data notice.
 
-The initial deadline is 00:00 UTC on the week's first game date because the verified schedule lacks kickoff times. Read [STATS-INTEGRATION.md](STATS-INTEGRATION.md) for scoring rules, verified endpoints, deployment, tests and limitations.
+The deadline is 00:00 UTC on Sunday because the verified schedule lacks kickoff times. Thursday, Friday, Saturday and Monday fixtures are excluded from the player pool, scoring, deadline and reveal state. Read [STATS-INTEGRATION.md](STATS-INTEGRATION.md) for scoring rules, verified endpoints, deployment, tests and limitations.
 
 Run tests with Node 24: `node --test tests/*.test.mjs`. Database tests in `tests/privacy.sql` roll back every fixture.
 

@@ -1,6 +1,6 @@
 # Live NFL stats integration
 
-Verified 8 September 2026. The app uses its existing Supabase project and Sleeper player IDs. No paid data subscription is required. League members receive server-calculated totals; full opponent rosters and their breakdowns are withheld until the full regular-season week is verified complete.
+Verified 8 September 2026. The app uses its existing Supabase project and Sleeper player IDs. No paid data subscription is required. Only games whose schedule date is Sunday count. League members receive server-calculated Sunday totals; full opponent rosters and their breakdowns are withheld until every Sunday game is verified complete.
 
 ## Verified endpoints
 
@@ -33,21 +33,21 @@ Example: Josh Allen's 2025 week 1 raw stats (394 passing yards, 2 passing TD, 30
 - Open, visible app sessions refresh every 60 seconds. A shared snapshot suppresses normal upstream refreshes for 60 seconds. Concurrent cold refreshes can still duplicate requests; this is suitable for a small friends league, not a high-traffic service.
 - There is no background scheduler in this release. If nobody has the app open, refresh/reveal occurs when someone returns. A reload selects the latest NFL week; the current page keeps its selected week fixed to avoid saving a roster into a newly rolled week.
 - The privileged aggregate function lives in `private`, checks membership, and exposes only totals/completion before reveal. An invoker wrapper provides the public RPC. Row-level security independently prevents direct opponent lineup reads, including salary and projection columns.
-- Reveal requires a complete 272-game regular-season schedule, 17 appearances per team, unique games, unique weekly teams, preservation of previously seen weekly games, and every game in the requested week marked `complete`. Final team stats must also be present. Cancelled placeholders are excluded only while the remaining schedule still passes the complete-season checks. A cancelled actual game or incomplete schedule keeps reveal blocked.
+- Reveal requires a complete 272-game regular-season schedule, 17 appearances per team, unique games, unique Sunday teams, preservation of previously seen Sunday games, and every Sunday game in the requested week marked `complete`. Final Sunday team stats must also be present. Thursday, Friday, Saturday and Monday statuses are ignored. Cancelled placeholders are excluded only while the remaining schedule still passes the complete-season checks. A cancelled actual game or incomplete schedule keeps reveal blocked.
 - Missing/invalid feeds, removed stat records and unexpected empty responses retain the previous snapshot. The UI labels delayed data with its last successful timestamp. A last-known verified final snapshot remains revealed. No random scores or projections substitute for real scoring.
 
 ## Current limitations
 
-- **Deadline:** Sleeper supplies game dates, not kickoff timestamps. The first release locks the entire week's roster at **00:00 UTC on the first game date**. The UI displays this deadline; a database trigger also blocks writes/deletes. Per-player kickoff locking requires another verified time feed. A missing verified schedule blocks edits.
+- **Sunday scope and deadline:** the player pool contains only teams scheduled on Sunday, only their points count, and reveal depends only on Sunday fixtures. Sleeper supplies game dates, not kickoff timestamps, so the roster locks at **00:00 UTC on Sunday**. The UI displays this deadline; a database trigger also blocks writes/deletes. Per-player kickoff locking requires another verified time feed. A missing verified schedule blocks edits.
 - Regular season only (weeks 1–18); no postseason competition support or historical week selector yet.
-- Existing Sleeper IDs map directly, including team abbreviations for DST. Legacy `dk26-*` IDs are flagged as needing mapping and score zero; no ambiguous name matching is performed. A valid player with no stat row scores zero, which can represent pregame, DNP, or feed omission. The provider does not supply enough information here to distinguish those reliably.
+- Existing Sleeper IDs map directly, including team abbreviations for DST. Existing non-Sunday selections remain visible to their owner, are labelled ignored, prevent the roster being described as Sunday-complete, and score zero; they are not deleted automatically. Legacy `dk26-*` IDs are flagged as needing mapping and score zero; no ambiguous name matching is performed. A valid Sunday player with no stat row scores zero, which can represent pregame, DNP, or feed omission. The provider does not supply enough information here to distinguish those reliably.
 - Scores are provisional and can change on later corrections. Raw scoring keys remain available in the post-week breakdown. Rule changes need a new scoring version and explicit recalculation.
 - Existing salary/position validation remains primarily in the roster builder; this integration is not a full server-side salary/eligibility validator.
 - No automatic paid/ESPN/nflverse fallback is enabled. Recovery is last-known-good data and retry; a replacement adapter must satisfy the same scoring/schedule validation contract.
 
 ## Deployment and verification
 
-Backend schema: `supabase/stats-schema.sql`; function: `supabase/functions/nfl-stats/index.ts` and `scoring.mjs`. Frontend: `live-stats.js` loaded after existing auth overrides. Supabase project: `lafgqijdnuemykhscuqe` (Weekly NFL Draft). Schema applied as `live_nfl_stats_and_private_rosters`; initial week 1 and existing week 3 schedules seeded from verified data.
+Backend schema: `supabase/stats-schema.sql`; Sunday migration: `supabase/sunday-only.sql`; function: `supabase/functions/nfl-stats/index.ts` and `scoring.mjs`. Frontend: `live-stats.js` loaded after existing auth overrides. Supabase project: `lafgqijdnuemykhscuqe` (Weekly NFL Draft). Initial week 1 and existing week 3 snapshots are reduced to Sunday fixtures.
 
 Run `node --test tests/*.test.mjs` with Node 24. `tests/privacy.sql` runs in a transaction and rolls back every synthetic user/league/lineup. It verifies private direct reads, aggregate scoring independent of client projections, outsider denial, denied snapshot mutation, final reveal, and locked deletion.
 

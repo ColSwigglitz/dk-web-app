@@ -8,10 +8,10 @@ union all select outsider,outsider||'@example.invalid','{"display_name":"Stats o
 insert into public.leagues(id,owner_id,name,invite_code) select league,a,'Stats privacy test',left(league::text,8) from fixture_ids;
 insert into public.league_members(league_id,user_id) select league,a from fixture_ids union all select league,b from fixture_ids;
 insert into public.nfl_week_stats(season,week,points,games,schedule_verified,week_complete,lock_at,fetched_at,rules_version)
-values(2099,1,'{"4984":{"fantasyPoints":41.76,"stats":{"pass_yd":394}}}','[]',true,false,now()+interval '1 day',now(),'test');
+values(2099,1,'{"4984":{"fantasyPoints":41.76,"stats":{"pass_yd":394}}}','[{"status":"pre_game","date":"2099-01-04","home":"BUF","away":"MIA","week":1,"game_id":"test-sunday"}]',true,false,now()+interval '1 day',now(),'test');
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 insert into public.weekly_lineups(league_id,user_id,season,week,lineup,projected)
-select league,b,2099,1,'{"QB":{"id":"4984","name":"Test Player","position":"QB","salary":7000}}',9999 from fixture_ids;
+select league,b,2099,1,'{"QB":{"id":"4984","name":"Test Player","position":"QB","team":"BUF","salary":7000},"RB1":{"id":"9999","name":"Thursday Player","position":"RB","team":"KC","salary":6000}}',9999 from fixture_ids;
 select set_config('request.jwt.claims',json_build_object('sub',a,'role','authenticated')::text,true) from fixture_ids;
 set local role authenticated;
 do $$ declare rows jsonb; begin
@@ -19,6 +19,7 @@ do $$ declare rows jsonb; begin
   select public.nfl_leaderboard(league,2099,1) into rows from fixture_ids;
   if exists(select 1 from jsonb_array_elements(rows) r where r->>'lineup' is not null) then raise exception 'RPC leaked roster'; end if;
   if not exists(select 1 from jsonb_array_elements(rows) r where (r->>'score')::numeric=41.76) then raise exception 'Incorrect server total'; end if;
+  if not exists(select 1 from jsonb_array_elements(rows) r where (r->>'excluded_count')::integer=1 and (r->>'sunday_selected_count')::integer=1) then raise exception 'Non-Sunday pick counted'; end if;
   begin
     update public.nfl_week_stats set week_complete=true where season=2099;
     raise exception 'User changed trusted snapshot';

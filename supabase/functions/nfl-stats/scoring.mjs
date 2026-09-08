@@ -1,5 +1,8 @@
 export const TEAMS = new Set('ARI ATL BAL BUF CAR CHI CIN CLE DAL DEN DET GB HOU IND JAX KC LAC LAR LV MIA MIN NE NO NYG NYJ PHI PIT SEA SF TB TEN WAS'.split(' '));
 export const RULES_VERSION = 'ppr-bonus-v1';
+export function isSunday(date) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(`${date}T12:00:00Z`).getUTCDay() === 0;
+}
 export function fantasyPoints(stats, defense = false) {
   const n = key => {
     const value = stats[key] ?? 0;
@@ -40,11 +43,13 @@ export function inspectSchedule(raw, week, previousGames = []) {
   const valid = active.length === 272 && new Set(active.map(g=>g.game_id)).size === 272
     && [...TEAMS].every(t=>counts.get(t)===17) && counts.size === 32
     && active.every(g=>Number.isInteger(g.week)&&g.week>=1&&g.week<=18&&g.home!==g.away&&/^\d{4}-\d{2}-\d{2}$/.test(g.date));
-  const games = active.filter(g=>g.week===week);
+  // This contest is Sunday-only. Thursday, Friday, Saturday and Monday games
+  // are intentionally absent from scoring, locking and reveal decisions.
+  const games = active.filter(g=>g.week===week && isSunday(g.date));
   const teams = games.flatMap(g=>[g.home,g.away]);
-  const retained = previousGames.every(old=>games.some(g=>g.game_id===old.game_id));
+  const retained = previousGames.filter(old=>isSunday(old.date)).every(old=>games.some(g=>g.game_id===old.game_id));
   const verified = valid && retained && games.length>=1 && new Set(teams).size===teams.length;
   return {games, verified, complete:verified && games.every(g=>g.status==='complete'),
-    lockAt: verified ? games.map(g=>g.date).sort()[0]+'T00:00:00Z' : null};
+    lockAt: verified ? games[0].date+'T00:00:00Z' : null};
 }
 

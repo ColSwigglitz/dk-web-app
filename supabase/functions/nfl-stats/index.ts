@@ -33,7 +33,7 @@ Deno.serve(async req => {
     const check=inspectSchedule(schedule,week,old?.games||[]);
     if(!check.verified) throw new Error('Schedule incomplete or changed; keeping previous scores and rosters private.');
     const points=normalizeStats(raw);
-    if(check.complete && check.games.some(g=>[g.home,g.away].some(team=>!Object.hasOwn(raw[team]||{},'pts_allow')))) throw new Error('Final team stats incomplete; retaining previous scores');
+    if(check.complete && check.games.some(g=>[g.home,g.away].some(team=>!Object.hasOwn(raw[team]||{},'pts_allow')))) throw new Error('Final Sunday team stats incomplete; retaining previous scores');
     // Empty stats are normal before games, but must never erase an existing scoring snapshot.
     if(!Object.keys(points).length && (Object.keys(old?.points||{}).length || check.games.some(g=>g.status==='complete'))) throw new Error('Stats temporarily unavailable');
     if(old && Object.keys(old.points||{}).some(id=>!Object.hasOwn(points,id))) throw new Error('Incomplete stats response; retaining previous scores');

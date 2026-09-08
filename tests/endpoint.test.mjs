@@ -24,6 +24,8 @@ test('authenticated integration, caching, failure retention and membership enfor
   };
   assert.equal((await handler(request())).status,200);
   assert.equal(saved.week_complete,false);
+  assert.equal(saved.games.length,13);
+  assert.equal(saved.lock_at,'2026-09-13T00:00:00Z');
   assert.deepEqual(saved.points,{});
   stats={'4984':{pass_yd:394,pass_td:2,rush_yd:30,rush_td:2}};saved=null;
   assert.equal((await handler(request())).status,200);
