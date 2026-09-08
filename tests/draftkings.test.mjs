@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const sandbox = { window: {} };
-vm.runInNewContext(fs.readFileSync(new URL('../week1-2026-data.js', import.meta.url), 'utf8'), sandbox);
+vm.runInNewContext(fs.readFileSync(new URL('../draftkings-week1-2026-151307.js', import.meta.url), 'utf8'), sandbox);
 const slate = sandbox.window.DK_NFL_SLATE;
 
 test('official Week 1 DraftKings Sunday Classic salary snapshot', () => {

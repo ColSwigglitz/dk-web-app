@@ -44,7 +44,7 @@ Replace `simulateUpdate()` with a server-side NFL stats adapter. The browser sho
 The Week 1 player pool now uses the official DraftKings NFL Classic Sunday draft group (`151307`), generated on 8 September 2026. DraftKings salary records are matched to Sleeper IDs so the existing live scoring adapter continues to work. The checked-in generator accepts the same draftables JSON returned by DraftKings:
 
 ```bash
-node scripts/build-draftkings-slate.mjs draftables.json week1-2026-data.js 2026 1 151307
+node scripts/build-draftkings-slate.mjs draftables.json draftkings-week1-2026-151307.js 2026 1 151307
 ```
 
 The DraftKings feed is undocumented and may change or become unavailable. The supported fallback is the slate's unmodified `DKSalaries.csv` export. Its common columns are:
