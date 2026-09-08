@@ -7,3 +7,8 @@
 @media(max-width:980px){.topbar{height:auto;padding:14px 18px;align-items:flex-start;gap:12px;flex-direction:column}.main-nav{width:100%;overflow:auto}.hero-strip{padding:24px 18px 18px;align-items:flex-start;gap:20px;flex-direction:column}.hero-stats{gap:24px}.view{padding:0 18px}.draft-grid,.two-col,.admin-grid{grid-template-columns:1fr}.lineup-panel{min-height:auto}.toolbar{align-items:stretch;flex-direction:column}.position-tabs{overflow:auto}.search-box{min-width:0;width:100%}.player-table th:nth-child(3),.player-table td:nth-child(3){display:none}.full-width{grid-column:auto}}
 @media(max-width:600px){.brand-subtitle{display:none}.hero-strip h1{font-size:24px}.hero-stats{width:100%;justify-content:space-between}.main-nav{gap:0}.nav-btn{padding:9px 10px;font-size:12px}.player-table th,.player-table td{padding:11px 9px}.player-table th:nth-child(2),.player-table td:nth-child(2){display:none}.player-photo-wrap{width:38px;height:38px}.team-row{grid-template-columns:40px 1fr 72px}.team-row .game-state{display:none}.leader-row{grid-template-columns:38px 1fr 74px}.leader-live{display:none}.leader-score{font-size:20px}}
 
+/* Keep player portraits beneath the sticky table heading while the pool scrolls. */
+.player-table-wrap{isolation:isolate}
+.player-table{border-collapse:separate;border-spacing:0}
+.player-table th{z-index:5;box-shadow:0 1px 0 #202a38}
+
